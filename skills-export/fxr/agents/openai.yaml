@@ -1,0 +1,4 @@
+interface:
+  display_name: "FXR"
+  short_description: "Integrated frontend refactor orchestrator"
+  default_prompt: "Run FXR: discover local MCP, skills, and UI stacks, then execute screenshot-driven frontend overhaul with unified design tokens and quality gates."

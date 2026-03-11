@@ -1,0 +1,4 @@
+interface:
+  display_name: "CMX"
+  short_description: "Build capability-to-task orchestration matrix"
+  default_prompt: "Scan local capabilities and produce a capability-to-task matrix with invocation order, then execute accordingly."
