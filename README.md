@@ -83,39 +83,155 @@ chmod +x setup.sh
 claude
 ```
 
+## Three-Layer Memory System
+
+Claude Powers 使用三层记忆架构，每层有不同的速度、容量和用途：
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Claude Code 对话                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Layer 1: Memory Files (零延迟，每次自动加载)                     │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ ~/.claude/projects/<path>/memory/                         │  │
+│  │   MEMORY.md ← 主索引，自动注入对话上下文 (200行以内)        │  │
+│  │   projects.md, preferences.md ← 按需 Read 加载            │  │
+│  │                                                           │  │
+│  │ 特点: 纯 Markdown, 无延迟, Claude 直接读写                  │  │
+│  │ 适合: 核心规则、项目索引、用户偏好、关键教训                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                              │ Read/Write                       │
+│                              ▼                                  │
+│  Layer 2: EverMemOS (语义搜索，跨会话持久化)                      │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ localhost:8001 — Python/FastAPI                            │  │
+│  │                                                           │  │
+│  │ 存储: MongoDB (文档) + Elasticsearch (全文) + Milvus (向量) │  │
+│  │ 能力: keyword / vector / hybrid 三种检索模式                │  │
+│  │ 接口: MCP 工具 memory_search / memory_store                │  │
+│  │                                                           │  │
+│  │ 特点: LLM 自动提取关键信息, 语义去重, 按 group 分类          │  │
+│  │ 适合: 编码经历、项目上下文、会话摘要、跨天记忆                 │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                              │ 高价值自动双写                     │
+│                              ▼                                  │
+│  Layer 3: Soul Memory Fabric (深度存储，高价值决策)                │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ localhost:12393 — Python/FastAPI                           │  │
+│  │                                                           │  │
+│  │ 存储: MongoDB (独立数据库 soul_memory)                      │  │
+│  │ 数据结构: MemoryAtom (带 salience/confidence/trust 评分)    │  │
+│  │ 接口: MCP 工具 soul_store                                  │  │
+│  │                                                           │  │
+│  │ 特点: 显式重要性标注 (0-1), 记忆类型分类, 审计追踪           │  │
+│  │ 适合: 架构决策、调试教训、关键发现、不可遗忘的经验             │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Memory Lifecycle
+
+记忆在会话生命周期中的完整流转：
+
+```
+                         ┌──────────────┐
+                         │  启动 Claude  │
+                         └──────┬───────┘
+                                │
+                    ┌───────────▼───────────┐
+                    │   SessionStart Hook   │
+                    │     (awaken.sh)       │
+                    └───────────┬───────────┘
+                                │
+              ┌─────────────────┼─────────────────┐
+              │                 │                  │
+              ▼                 ▼                  ▼
+    ┌────────────────┐ ┌──────────────┐ ┌──────────────────┐
+    │ EverMemOS 搜索  │ │ Soul Fabric  │ │ 读取本地日记文件   │
+    │ (keyword, 3路)  │ │   recall     │ │ (today/yesterday) │
+    └───────┬────────┘ └──────┬───────┘ └────────┬─────────┘
+            │                 │                   │
+            └─────────┬───────┘                   │
+                      ▼                           │
+            ┌──────────────────┐                  │
+            │ recall-filter.py │                  │
+            │ 去重+压缩+限8条   │                  │
+            └────────┬─────────┘                  │
+                     │                            │
+                     └──────────┬─────────────────┘
+                                ▼
+                    ┌───────────────────────┐
+                    │  注入 <memory> 到上下文 │
+                    └───────────┬───────────┘
+                                │
+                    ┌───────────▼───────────┐
+                    │      对话进行中...      │
+                    └───────────┬───────────┘
+                                │
+               ┌────────────────┼────────────────┐
+               │                │                 │
+    ┌──────────▼──────────┐    │     ┌───────────▼───────────┐
+    │ UserPromptSubmit     │    │     │ PreCompact Hook       │
+    │ (inject-time.sh)     │    │     │ 压缩前保存关键上下文    │
+    │ 每条消息注入真实时间   │    │     │ → EverMemOS + Soul    │
+    └─────────────────────┘    │     └───────────────────────┘
+                               │
+               ┌───────────────┼───────────────┐
+               │                               │
+    ┌──────────▼──────────┐        ┌───────────▼───────────┐
+    │ Claude 主动调用 MCP  │        │    Stop / SessionEnd   │
+    │ memory_store (发现)  │        │     (sleep.sh)         │
+    │ soul_store (决策)    │        └───────────┬───────────┘
+    └─────────────────────┘                    │
+                                               ▼
+                                   ┌───────────────────────┐
+                                   │ Haiku LLM 生成150字摘要 │
+                                   └───────────┬───────────┘
+                                               │
+                              ┌────────────────┼────────────────┐
+                              │                │                │
+                              ▼                ▼                ▼
+                    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+                    │  EverMemOS   │ │ Soul Fabric  │ │  本地日记     │
+                    │ (force写入)   │ │ (episode)    │ │ diary/mm-dd  │
+                    └──────────────┘ └──────────────┘ └──────────────┘
+```
+
 ## Architecture
 
 ```
 Claude Code CLI
   │
   ├── Skills ─────────── 5 个可调用技能 (browser-test, cmx, fxr, keybag, masters-council)
-  ├── Memory Files ───── MEMORY.md 自动加载到每次对话上下文
+  ├── Memory Files ───── MEMORY.md 自动加载到每次对话上下文 (Layer 1)
   │
   ├── Hooks (6 个生命周期钩子)
-  │   ├── SessionStart     → awaken.sh    从 EverMemOS 加载相关记忆
+  │   ├── SessionStart     → awaken.sh    从 Layer 2+3 加载记忆到上下文
   │   ├── UserPromptSubmit → inject-time  注入真实时间戳
-  │   ├── SessionEnd       → sleep.sh     LLM 摘要 → 三写记忆
-  │   ├── PreCompact       → prompt       压缩前保存关键上下文
-  │   ├── Stop             → prompt       总结 + 存教训
+  │   ├── SessionEnd       → sleep.sh     LLM 摘要 → 三写 (Layer 2 + 3 + diary)
+  │   ├── PreCompact       → prompt       压缩前保存关键上下文到 Layer 2+3
+  │   ├── Stop             → prompt       总结 + 存教训到 Layer 2
   │   └── PreToolUse       → guard.sh     阻止误杀 Claude 进程
   │
   └── MCP Server (memory-bridge)
-      ├── memory_search    搜索 EverMemOS 记忆
-      ├── memory_store     存入 EverMemOS（高价值自动双写 Soul Fabric）
-      ├── soul_store       显式写入 Soul Memory Fabric
-      └── system_status    检查服务健康状态
+      ├── memory_search    搜索 Layer 2 (EverMemOS)
+      ├── memory_store     写入 Layer 2（高价值自动双写 Layer 3）
+      ├── soul_store       显式写入 Layer 3 (Soul Fabric)
+      └── system_status    检查所有服务健康状态
 
-Docker Infrastructure
-  ├── MongoDB 7.0       :27017   主文档存储（两个服务共享）
-  ├── Elasticsearch 8   :19200   全文搜索引擎
-  ├── Milvus 2.5        :19530   向量数据库
-  ├── MinIO + etcd               Milvus 依赖
-  └── Redis 7.2         :6380    缓存
+Docker Infrastructure (全部空容器，首次安装零数据)
+  ├── MongoDB 7.0       :27017   文档存储（EverMemOS db:memsys + Soul db:soul_memory）
+  ├── Elasticsearch 8   :19200   全文关键词搜索
+  ├── Milvus 2.5        :19530   向量语义搜索
+  ├── MinIO + etcd               Milvus 对象存储 + 协调
+  └── Redis 7.2         :6380    缓存队列
 
 Local Applications
-  ├── EverMemOS         :8001    企业级长期记忆系统 (Python/FastAPI)
-  ├── Soul Fabric       :12393   灵魂记忆控制面板 (Python/FastAPI)
-  └── Ollama            :11434   本地 Embedding 模型 (qwen3-embedding)
+  ├── EverMemOS         :8001    Layer 2 — 长期记忆 (Python/FastAPI)
+  ├── Soul Fabric       :12393   Layer 3 — 灵魂记忆 (Python/FastAPI)
+  └── Ollama            :11434   Embedding 模型 (qwen3-embedding, 1024维)
 ```
 
 ## Daily Usage
@@ -147,7 +263,7 @@ claude
 ├── .mcp.json                         MCP Server 注册
 ├── skills/                           自定义技能
 │   ├── browser-test/                   AI 浏览器测试
-│   ├── cmx/                            能力��阵构建
+│   ├── cmx/                            能力矩阵构建
 │   ├── fxr/                            前端重构编排
 │   ├── keybag/                         密钥管理
 │   └── masters-council/                大师参谋团
