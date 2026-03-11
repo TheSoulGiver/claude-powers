@@ -1,6 +1,22 @@
-# Claude Powers 安装包（完整本地部署版）
+# Claude Powers
 
-为 Claude Code CLI 配置完整的 Skills + Memory + Hooks + MCP + 后端服务。
+为 Claude Code CLI 一键配置完整的 Skills + Memory + Hooks + MCP + 后端记忆系统。
+
+## 快速安装
+
+```bash
+git clone https://github.com/TheSoulGiver/claude-powers.git
+cd claude-powers
+nano config.env          # 填写你的名字和 API key
+chmod +x setup.sh
+./setup.sh               # 一键安装
+```
+
+安装完成后：
+```bash
+~/.claude-powers/infra/start-services.sh start   # 启动后端服务
+claude                                             # 开始使用
+```
 
 ## 系统架构
 
