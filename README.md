@@ -233,7 +233,7 @@ cp ~/.claude/.mcp.json.bak ~/.claude/.mcp.json
 
 ## License
 
-MIT
+Personal & non-commercial use only. See [LICENSE](LICENSE).
 
 ## Credits
 
