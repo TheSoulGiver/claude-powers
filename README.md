@@ -1,229 +1,240 @@
 # Claude Powers
 
-为 Claude Code CLI 一键配置完整的 Skills + Memory + Hooks + MCP + 后端记忆系统。
+> Give your [Claude Code](https://docs.anthropic.com/en/docs/claude-code) a persistent memory and superpowered skill system.
 
-## 快速安装
+Claude Powers 为 Claude Code CLI 一键配置完整的 **Skills + Memory + Hooks + MCP + 后端记忆系统**，让你的 Claude 拥有跨会话长期记忆、自动摘要、时间感知和可扩展技能。
 
-```bash
-git clone https://github.com/TheSoulGiver/claude-powers.git
-cd claude-powers
-nano config.env          # 填写你的名字和 API key
-chmod +x setup.sh
-./setup.sh               # 一键安装
-```
+## Features
 
-安装完成后：
-```bash
-~/.claude-powers/infra/start-services.sh start   # 启动后端服务
-claude                                             # 开始使用
-```
+- **长期记忆** — 通过 EverMemOS 实现跨会话的语义记忆检索，Claude 能记住之前做过什么
+- **自动摘要** — 每次会话结束自动用 LLM 生成摘要并存入记忆系统
+- **时间感知** — 每条消息自动注入真实时间，Claude 永远知道"现在几点"
+- **上下文保护** — 长会话压缩前自动保存关键上下文到远程记忆，防止中途失忆
+- **进程保护** — 防止 Claude 误杀自己的进程
+- **灵魂记忆** — Soul Memory Fabric 提供高价值决策/教训的深度存储
+- **5 个技能** — browser-test / cmx / fxr / keybag / masters-council
+- **MCP 工具** — `memory_search`、`memory_store`、`soul_store`、`system_status`
 
-## 系统架构
+## Quick Start
 
-```
-Claude Code
-  ├── Skills (5 个通用技能)
-  ├── Memory Files (MEMORY.md 自动加载到上下文)
-  ├── Hooks
-  │   ├── SessionStart  → 从 EverMemOS 加载记忆
-  │   ├── UserPromptSubmit → 注入真实时间
-  │   ├── SessionEnd    → LLM 摘要写入 EverMemOS
-  │   ├── PreCompact    → 压缩前保存关键上下文
-  │   ├── Stop          → 总结 + 存记忆
-  │   └── PreToolUse    → 防止误杀 Claude 进程
-  │
-  └── MCP Server → EverMemOS (localhost:8001)
-                 → Soul Fabric (localhost:12393)
-
-Docker 基础设施
-  ├── MongoDB 7.0      (:27017)  ← 两个服务共享
-  ├── Elasticsearch 8   (:19200) ← EverMemOS 全文搜索
-  ├── Milvus 2.5        (:19530) ← EverMemOS 向量搜索
-  └── Redis 7.2         (:6380)  ← EverMemOS 缓存
-
-本地应用
-  ├── EverMemOS (Python/FastAPI, :8001)  ← 长期记忆系统
-  ├── Soul Fabric (Python/FastAPI, :12393) ← 灵魂记忆
-  └── Ollama + qwen3-embedding (:11434)  ← 向量化模型
-```
-
-## 安装步骤
-
-### 前置条件
+### 1. 安装前置依赖
 
 ```bash
-# 必须
+# macOS (Homebrew)
 brew install node jq python3 git
-brew install --cask docker    # Docker Desktop
+brew install --cask docker
 
-# Claude Code
+# Claude Code CLI
 npm install -g @anthropic-ai/claude-code
 
 # Python 包管理器
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 本地 embedding 模型
+# 本地 Embedding 模型（向量搜索需要）
 brew install ollama
 ollama pull qwen3-embedding
 ```
 
-### 第 1 步：准备源码
-
-需要从瑞鹏的 Mac 复制两个项目的源码：
+### 2. Clone & 配置
 
 ```bash
-# 在安装包目录下创建 source 目录
-mkdir -p source
-
-# 方法 A: 通过 AirDrop / U盘
-# 把瑞鹏 Mac 上的以下目录复制到这里:
-# ~/.openclaw/workspace/EverMemOS/ → source/EverMemOS/
-# ~/soul-memory-fabric/           → source/soul-memory-fabric/
-
-# 方法 B: 通过 scp（同一网络）
-scp -r caoruipeng@<瑞鹏IP>:~/.openclaw/workspace/EverMemOS ./source/EverMemOS
-scp -r caoruipeng@<瑞鹏IP>:~/soul-memory-fabric ./source/soul-memory-fabric
+git clone https://github.com/TheSoulGiver/claude-powers.git
+cd claude-powers
 ```
 
-### 第 2 步：编辑配置
+编辑 `config.env`：
 
 ```bash
 nano config.env
 ```
 
-必须填写：
-- `USER_NAME` — 你的名字
-- `USER_ID` — 英文标识（如 `xiaoli`）
-- `ANTHROPIC_API_KEY` — 你的 Anthropic API key
+必须填写 3 项：
 
-### 第 3 步：运行安装
+| 字段 | 说明 | 示例 |
+|------|------|------|
+| `USER_NAME` | 你的名字 | `"小明"` |
+| `USER_ID` | 英文标识（唯一） | `"xiaoming"` |
+| `ANTHROPIC_API_KEY` | Anthropic API Key | `"sk-ant-..."` |
+
+### 3. 一键安装
 
 ```bash
 chmod +x setup.sh
 ./setup.sh
 ```
 
-### 第 4 步：启动服务
+安装脚本会自动完成：
+- 启动 Docker 基础设施（MongoDB / Elasticsearch / Milvus / Redis）
+- 安装 EverMemOS 和 Soul Memory Fabric
+- 配置 Hook 脚本和 MCP Server
+- 安装 Skills 和 Memory 模板
+- 生成所有密钥和配置文件
+
+### 4. 启动 & 使用
 
 ```bash
-# 启动所有后端服务（Docker + EverMemOS + Soul Fabric）
+# 启动后端服务
 ~/.claude-powers/infra/start-services.sh start
 
-# 检查状态
+# 查看服务状态
 ~/.claude-powers/infra/start-services.sh status
-```
 
-### 第 5 步：启动 Claude Code
-
-```bash
+# 开始使用 Claude Code
 claude
 ```
 
-首次启动会自动下载 plugins（需要网络）。
+## Architecture
 
-## 日常使用
+```
+Claude Code CLI
+  │
+  ├── Skills ─────────── 5 个可调用技能 (browser-test, cmx, fxr, keybag, masters-council)
+  ├── Memory Files ───── MEMORY.md 自动加载到每次对话上下文
+  │
+  ├── Hooks (6 个生命周期钩子)
+  │   ├── SessionStart     → awaken.sh    从 EverMemOS 加载相关记忆
+  │   ├── UserPromptSubmit → inject-time  注入真实时间戳
+  │   ├── SessionEnd       → sleep.sh     LLM 摘要 → 三写记忆
+  │   ├── PreCompact       → prompt       压缩前保存关键上下文
+  │   ├── Stop             → prompt       总结 + 存教训
+  │   └── PreToolUse       → guard.sh     阻止误杀 Claude 进程
+  │
+  └── MCP Server (memory-bridge)
+      ├── memory_search    搜索 EverMemOS 记忆
+      ├── memory_store     存入 EverMemOS（高价值自动双写 Soul Fabric）
+      ├── soul_store       显式写入 Soul Memory Fabric
+      └── system_status    检查服务健康状态
+
+Docker Infrastructure
+  ├── MongoDB 7.0       :27017   主文档存储（两个服务共享）
+  ├── Elasticsearch 8   :19200   全文搜索引擎
+  ├── Milvus 2.5        :19530   向量数据库
+  ├── MinIO + etcd               Milvus 依赖
+  └── Redis 7.2         :6380    缓存
+
+Local Applications
+  ├── EverMemOS         :8001    企业级长期记忆系统 (Python/FastAPI)
+  ├── Soul Fabric       :12393   灵魂记忆控制面板 (Python/FastAPI)
+  └── Ollama            :11434   本地 Embedding 模型 (qwen3-embedding)
+```
+
+## Daily Usage
 
 ```bash
-# 每天开机后启动服务
+# 开机后启动（约 30 秒）
 ~/.claude-powers/infra/start-services.sh start
 
-# 然后正常使用 Claude Code
+# 正常使用 Claude Code
 claude
 
-# 关机前停止服务（可选，Docker Desktop 关闭会自动停止）
+# 关机前停止（可选）
 ~/.claude-powers/infra/start-services.sh stop
 ```
 
-## 文件结构
+**Claude 会自动：**
+- 启动时搜索相关记忆加载到上下文
+- 每条消息注入当前真实时间
+- 长会话压缩前保存关键信息
+- 会话结束时生成摘要写入 EverMemOS
+- 遇到重要发现时通过 MCP 工具主动存储
+
+## Installed File Structure
 
 ```
-安装后:
 ~/.claude/
-├── settings.json           # 全局配置（模型、插件）
-├── settings.local.json     # 本机配置（权限、hooks）
-├── .mcp.json               # MCP server 注册
-├── skills/                 # 自定义技能
-│   ├── browser-test/
-│   ├── cmx/
-│   ├── fxr/
-│   ├── keybag/
-│   └── masters-council/
+├── settings.json                     全局配置（模型、插件）
+├── settings.local.json               权限、Hooks、语言
+├── .mcp.json                         MCP Server 注册
+├── skills/                           自定义技能
+│   ├── browser-test/                   AI 浏览器测试
+│   ├── cmx/                            能力��阵构建
+│   ├── fxr/                            前端重构编排
+│   ├── keybag/                         密钥管理
+│   └── masters-council/                大师参谋团
 └── projects/<encoded-home>/memory/
-    ├── MEMORY.md           # 主索引（自动加载）
-    ├── projects.md
-    └── preferences.md
+    ├── MEMORY.md                       主索引（每次自动加载）
+    ├── projects.md                     项目记录
+    └── preferences.md                  用户偏好
 
 ~/.claude-powers/
-├── scripts/                # Hook 脚本 + MCP server
-├── infra/                  # Docker compose + 服务管理
-├── EverMemOS/              # EverMemOS 应用源码
-├── soul-memory-fabric/     # Soul Fabric 应用源码
-├── diary/                  # 每日编码日记
-├── logs/                   # 服务日志
-├── pids/                   # 进程 PID 文件
-└── CREDENTIALS.txt         # 生成的密钥
+├── scripts/              Hook 脚本 + MCP Server + Node 依赖
+├── infra/                Docker Compose + 服务启停脚本
+├── EverMemOS/            EverMemOS 应用
+├── soul-memory-fabric/   Soul Fabric 应用
+├── diary/                每日编码日记（自动写入）
+├── logs/                 服务日志
+└── CREDENTIALS.txt       自动生成的密钥
 
-~/.claude-powers.env        # 运行时环境变量
+~/.claude-powers.env      运行时环境变量
 ```
 
-## 磁盘空间需求
+## Disk Space
 
 | 组件 | 大小 |
 |------|------|
-| Docker 镜像 | ~5GB |
-| Docker 数据卷（初始） | ~500MB |
-| EverMemOS 源码 + 依赖 | ~1GB |
-| Soul Fabric | ~100MB |
-| Ollama qwen3-embedding | ~1.5GB |
-| **总计** | **~8GB** |
+| Docker 镜像 | ~5 GB |
+| Docker 数据卷（初始） | ~500 MB |
+| EverMemOS + 依赖 | ~1 GB |
+| Soul Fabric | ~100 MB |
+| Ollama qwen3-embedding | ~1.5 GB |
+| **总计** | **~8 GB** |
 
-## 故障排除
+## Troubleshooting
 
-### Docker 容器启动失败
+<details>
+<summary><b>Docker 容器启动失败</b></summary>
+
 ```bash
 cd ~/.claude-powers/infra
-docker compose logs <service-name>
+docker compose logs mongodb        # 查看具体服务日志
+docker compose logs elasticsearch
 ```
+</details>
 
-### EverMemOS 无法启动
+<details>
+<summary><b>EverMemOS 无法启动</b></summary>
+
 ```bash
-# 检查日志
 cat ~/.claude-powers/logs/evermemos.log
 
-# 常见问题: MongoDB 未就绪，等几秒后重试
+# 常见原因：MongoDB 还没就绪，重启试试
 ~/.claude-powers/infra/start-services.sh restart
 ```
+</details>
 
-### 向量搜索不工作
+<details>
+<summary><b>向量搜索不工作</b></summary>
+
 ```bash
 # 确保 Ollama 在运行
 ollama serve &
-ollama list  # 应该看到 qwen3-embedding
+ollama list   # 应该看到 qwen3-embedding
 ```
+</details>
 
-### Claude Code 启动时报 MCP 错误
+<details>
+<summary><b>Claude Code 报 MCP 错误</b></summary>
+
 ```bash
-# 检查 MCP server 日志
 cat /tmp/mcp-memory-bridge.log
-
-# 确保 node_modules 已安装
 cd ~/.claude-powers/scripts && npm install
 ```
+</details>
 
-## 卸载
+## Uninstall
 
 ```bash
-# 停止服务
 ~/.claude-powers/infra/start-services.sh stop
-
-# 删除 Docker 数据
 cd ~/.claude-powers/infra && docker compose down -v
-
-# 删除所有文件
-rm -rf ~/.claude-powers
-rm ~/.claude-powers.env
-
-# 恢复 Claude Code 配置
+rm -rf ~/.claude-powers ~/.claude-powers.env
 cp ~/.claude/settings.local.json.bak ~/.claude/settings.local.json
 cp ~/.claude/.mcp.json.bak ~/.claude/.mcp.json
 ```
+
+## License
+
+MIT
+
+## Credits
+
+Built with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [EverMemOS](https://github.com/TheSoulGiver/claude-powers/tree/main/source/EverMemOS), and [Soul Memory Fabric](https://github.com/TheSoulGiver/claude-powers/tree/main/source/soul-memory-fabric).
