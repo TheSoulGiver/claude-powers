@@ -1,19 +1,48 @@
 # Claude Powers
 
-> Give your [Claude Code](https://docs.anthropic.com/en/docs/claude-code) a persistent memory and superpowered skill system.
+> [OpenClaw](https://github.com/openclaw) + [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 超能力系统 — 三层记忆架构，让你的 Claude Code 拥有跨会话长期记忆。
 
-Claude Powers 为 Claude Code CLI 一键配置完整的 **Skills + Memory + Hooks + MCP + 后端记忆系统**，让你的 Claude 拥有跨会话长期记忆、自动摘要、时间感知和可扩展技能。
+Claude Powers 是 **OpenClaw 生态系统**的记忆与技能基础设施，专为 Claude Code CLI 设计。它将 OpenClaw 的 [EverMemOS](source/EverMemOS/) 企业级记忆系统和 [Soul Memory Fabric](source/soul-memory-fabric/) 灵魂记忆引擎整合进 Claude Code 的 Hooks + MCP 体系，实现：
+
+- 会话间的长期记忆持久化
+- 自动化的记忆生命周期管理
+- 可扩展的技能系统
+
+## What is this?
+
+**OpenClaw** 是一个 AI Agent 运行时平台。**Claude Code** 是 Anthropic 的 CLI 编码助手。Claude Powers 将两者连接：
+
+```
+┌──────────────────────────────────────────────────┐
+│                 OpenClaw Ecosystem                │
+│                                                  │
+│  EverMemOS ──── 企业级记忆系统 (语义搜索/向量检索)  │
+│  Soul Fabric ── 灵魂记忆引擎 (高价值决策/教训存储)  │
+│                                                  │
+├──────────────────────────────────────────────────┤
+│              Claude Powers (本项目)               │
+│                                                  │
+│  Hooks ──────── 6 个生命周期钩子 (唤醒/入眠/保护)  │
+│  MCP Server ─── 记忆桥接 (search/store/recall)   │
+│  Skills ─────── 5 个可调用技能                    │
+│  Memory Files ─ 三层记忆文件系统                   │
+│                                                  │
+├──────────────────────────────────────────────────┤
+│               Claude Code CLI                    │
+│                                                  │
+│  你的日常编码助手，现在拥有了长期记忆               │
+└──────────────────────────────────────────────────┘
+```
 
 ## Features
 
-- **长期记忆** — 通过 EverMemOS 实现跨会话的语义记忆检索，Claude 能记住之前做过什么
-- **自动摘要** — 每次会话结束自动用 LLM 生成摘要并存入记忆系统
-- **时间感知** — 每条消息自动注入真实时间，Claude 永远知道"现在几点"
-- **上下文保护** — 长会话压缩前自动保存关键上下文到远程记忆，防止中途失忆
-- **进程保护** — 防止 Claude 误杀自己的进程
-- **灵魂记忆** — Soul Memory Fabric 提供高价值决策/教训的深度存储
-- **5 个技能** — browser-test / cmx / fxr / keybag / masters-council
-- **MCP 工具** — `memory_search`、`memory_store`、`soul_store`、`system_status`
+- **三层记忆架构** — Memory Files (零延迟) → EverMemOS (语义搜索) → Soul Fabric (深度存储)
+- **自动记忆生命周期** — 唤醒加载 → 对话中积累 → 入眠摘要 → 压缩保护，全自动
+- **时间感知** — 每条消息注入真实时间，Claude 永远知道"现在几点"
+- **上下文保护** — 长会话压缩前自动保存关键上下文，防止中途失忆
+- **进程保护** — PreToolUse Hook 阻止 Claude 误杀自己的进程
+- **OpenClaw MCP 桥接** — `memory_search`、`memory_store`、`soul_store`、`system_status`
+- **5 个 Skills** — browser-test / cmx / fxr / keybag / masters-council
 
 ## Quick Start
 
@@ -351,6 +380,18 @@ cp ~/.claude/.mcp.json.bak ~/.claude/.mcp.json
 
 Personal & non-commercial use only. See [LICENSE](LICENSE).
 
+## Part of OpenClaw Ecosystem
+
+Claude Powers 是 [OpenClaw](https://github.com/openclaw) AI Agent 生态系统的一部分：
+
+| 组件 | 说明 |
+|------|------|
+| **OpenClaw** | AI Agent 运行时平台 — 社交调度、多 Agent 协作 |
+| **EverMemOS** | 企业级记忆系统 — 语义搜索、向量检索、LLM 提取 |
+| **Soul Memory Fabric** | 灵魂记忆引擎 — 高价值决策存储、审计追踪、记忆进化 |
+| **Claude Powers** (本项目) | Claude Code 集成层 — Hooks + MCP + Skills |
+
 ## Credits
 
-Built with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [EverMemOS](https://github.com/TheSoulGiver/claude-powers/tree/main/source/EverMemOS), and [Soul Memory Fabric](https://github.com/TheSoulGiver/claude-powers/tree/main/source/soul-memory-fabric).
+Built for the [OpenClaw](https://github.com/openclaw) ecosystem.
+Powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Anthropic](https://anthropic.com).
